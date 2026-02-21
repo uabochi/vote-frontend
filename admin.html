@@ -1,0 +1,41 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Admin Panel</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+<header>
+    <h2>Admin Panel</h2>
+    <button onclick="logout()">Logout</button>
+</header>
+
+<div class="container">
+
+    <div class="card">
+        <h3>Add User</h3>
+        <input id="newUsername" placeholder="Username">
+        <select id="role">
+            <option value="voter">Voter</option>
+            <option value="admin">Admin</option>
+        </select>
+        <button onclick="addUser()">Add</button>
+    </div>
+
+    <div class="card">
+        <h3>Users</h3>
+        <div id="usersList"></div>
+    </div>
+
+    <div class="card">
+        <h3>Votes</h3>
+        <div id="votesList"></div>
+    </div>
+
+</div>
+
+<script src="script.js"></script>
+</body>
+</html>

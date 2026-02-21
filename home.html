@@ -1,0 +1,24 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Voting Dashboard</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="stylesheet" href="style.css">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+</head>
+<body>
+
+<header>
+    <h2>Voting Dashboard</h2>
+    <div>
+        <span id="userDisplay"></span>
+        <button onclick="logout()">Logout</button>
+        <button id="adminBtn" onclick="goAdmin()" style="display:none;">Admin Panel</button>
+    </div>
+</header>
+
+<div class="container" id="positions"></div>
+
+<script src="script.js"></script>
+</body>
+</html>

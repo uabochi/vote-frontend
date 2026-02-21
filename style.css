@@ -1,0 +1,69 @@
+:root {
+    --navy: #0a1f44;
+    --white: #ffffff;
+}
+
+body {
+    margin: 0;
+    font-family: Arial;
+    background: var(--navy);
+    color: var(--white);
+}
+
+.center-page {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    height: 100vh;
+}
+
+.card {
+    background: var(--white);
+    color: var(--navy);
+    padding: 20px;
+    border-radius: 8px;
+    margin-bottom: 20px;
+}
+
+input, select {
+    width: 100%;
+    padding: 8px;
+    margin: 5px 0;
+}
+
+button {
+    background: var(--navy);
+    color: white;
+    padding: 8px;
+    border: none;
+    cursor: pointer;
+    margin-top: 5px;
+}
+
+button:hover {
+    opacity: 0.8;
+}
+
+header {
+    background: white;
+    color: navy;
+    padding: 15px;
+    display: flex;
+    justify-content: space-between;
+}
+
+.container {
+    padding: 20px;
+}
+
+.position-card {
+    background: white;
+    color: navy;
+    padding: 15px;
+    border-radius: 8px;
+    margin-bottom: 20px;
+}
+
+.error {
+    color: red;
+}
