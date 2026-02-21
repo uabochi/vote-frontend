@@ -1,4 +1,52 @@
-const API_URL = "https://vote-backend-sx1r.onrender.com";
+// const API_URL = "https://vote-backend-sx1r.onrender.com";
+const API_URL = "http://localhost:5000";
+
+const socket = io(API_URL);
+
+/* ===========================
+   COLOR SYSTEM FOR CHARTS
+=========================== */
+
+const colorPalette = [
+  "#1abc9c", // turquoise
+  "#3498db", // blue
+  "#9b59b6", // purple
+  "#f1c40f", // yellow
+  "#e74c3c", // red
+  "#2ecc71", // green
+  "#34495e", // dark blue-gray
+  "#e67e22", // orange
+
+  "#16a085", // darker turquoise
+  "#2980b9", // darker blue
+  "#8e44ad", // darker purple
+  "#f39c12", // dark yellow-orange
+  "#c0392b", // dark red
+  "#27ae60", // dark green
+  "#2c3e50", // navy
+  "#d35400", // dark orange
+
+  "#7f8c8d", // gray
+  "#95a5a6", // light gray
+  "#ff6b6b", // soft red
+  "#6c5ce7", // violet
+  "#00cec9", // aqua
+  "#fd79a8", // pink
+  "#55efc4", // mint
+  "#ffeaa7"  // pale yellow
+];
+
+let colorIndex = 0;
+const candidateColors = {};
+const charts = {}; // store chart instances
+
+function getColorForCandidate(name) {
+  if (!candidateColors[name]) {
+    candidateColors[name] = colorPalette[colorIndex % colorPalette.length];
+    colorIndex++;
+  }
+  return candidateColors[name];
+}
 
 /* LOGIN */
 async function login() {
@@ -78,36 +126,92 @@ async function createPosition(position, candidates, username) {
 
 /* VOTE */
 async function vote(username, position, candidate) {
-  await fetch(`${API_URL}/vote`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ username, position, candidate }),
-  });
 
-  loadResults();
+    const res = await fetch(`${API_URL}/vote`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ username, position, candidate })
+    });
+
+    const data = await res.json();
+
+    if (!res.ok) {
+        alert(data.message);
+        return;
+    }
+
+    // Immediately refresh results
+    await loadResults();
 }
 
 /* LOAD RESULTS */
 async function loadResults() {
-  const res = await fetch(`${API_URL}/results`);
-  const results = await res.json();
+    const res = await fetch(`${API_URL}/results`);
+    const results = await res.json();
 
-  for (let position in results) {
-    const ctx = document.getElementById(`chart-${position}`);
-    if (!ctx) continue;
+    for (let position in results) {
 
-    new Chart(ctx, {
-      type: "pie",
-      data: {
-        labels: Object.keys(results[position]),
-        datasets: [
-          {
-            data: Object.values(results[position]),
-          },
-        ],
-      },
-    });
-  }
+        const canvas = document.getElementById(`chart-${position}`);
+        if (!canvas) continue;
+
+        const labels = Object.keys(results[position]);
+        const data = Object.values(results[position]);
+
+        const backgroundColors = labels.map(label =>
+            getColorForCandidate(label)
+        );
+
+        if (charts[position]) {
+            // Update existing chart
+            charts[position].data.labels = labels;
+            charts[position].data.datasets[0].data = data;
+            charts[position].data.datasets[0].backgroundColor = backgroundColors;
+            charts[position].update();
+        } else {
+            // Create new chart only once
+            charts[position] = new Chart(canvas, {
+                type: "pie",
+                data: {
+                    labels: labels,
+                    datasets: [{
+                        data: data,
+                        backgroundColor: backgroundColors
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    animation: {
+                        animateRotate: true
+                    }
+                }
+            });
+        }
+    }
+}
+
+function updateCharts(results) {
+
+    for (let position in results) {
+
+        const ctx = document.getElementById(`chart-${position}`);
+        if (!ctx) continue;
+
+        if (charts[position]) {
+            charts[position].data.labels = Object.keys(results[position]);
+            charts[position].data.datasets[0].data = Object.values(results[position]);
+            charts[position].update();
+        } else {
+            charts[position] = new Chart(ctx, {
+                type: "pie",
+                data: {
+                    labels: Object.keys(results[position]),
+                    datasets: [{
+                        data: Object.values(results[position])
+                    }]
+                }
+            });
+        }
+    }
 }
 
 /* ================= ADMIN ================= */
@@ -136,7 +240,7 @@ async function loadUsers() {
 }
 
 async function addUser() {
-  const username = document.getElementById("newUsername").value;
+  const username = document.getElementById("newUsername").value.toUpperCase();
   const role = document.getElementById("role").value;
 
   await fetch(`${API_URL}/users`, {
