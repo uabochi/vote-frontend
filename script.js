@@ -2,6 +2,7 @@ const API_URL = "https://vote-backend-sx1r.onrender.com";
 // const API_URL = "http://localhost:5000";
 
 const socket = io(API_URL);
+let votingActive = false;
 
 /* ===========================
    COLOR SYSTEM FOR CHARTS
@@ -51,11 +52,12 @@ function getColorForCandidate(name) {
 /* LOGIN */
 async function login() {
   const username = document.getElementById("username").value;
+  const password = document.getElementById("password").value;
 
   const res = await fetch(`${API_URL}/login`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ username }),
+    body: JSON.stringify({ username, password }),
   });
 
   const data = await res.json();
@@ -85,11 +87,20 @@ if (window.location.pathname.includes("home.html")) {
   loadDashboard();
 }
 
+// Load dashboard and results
 async function loadDashboard() {
   const user = JSON.parse(localStorage.getItem("user"));
   if (!user) return logout();
 
   document.getElementById("userDisplay").innerText = user.username;
+
+  // Get voting status and candidates
+  const statusRes = await fetch(`${API_URL}/voting-status`);
+  const status = await statusRes.json();
+
+  votingActive = status.votingActive;
+  setVotingButtons(votingActive);
+  updateTimerDisplay(status.countdown);
 
   const res = await fetch(`${API_URL}/candidates`);
   const candidates = await res.json();
@@ -112,8 +123,16 @@ async function createPosition(position, candidates, username) {
 
   for (let candidate of candidates) {
     const btn = document.createElement("button");
+    btn.classList.add("vote-btn");
     btn.innerText = candidate;
-    btn.onclick = () => vote(username, position, candidate);
+    btn.onclick = () => {
+      if (!votingActive) {
+        alert("Voting is not active");
+        return;
+      }
+      vote(username, position, candidate);
+    };
+    // btn.onclick = () => vote(username, position, candidate);
     div.appendChild(btn);
   }
 
@@ -212,6 +231,68 @@ function updateCharts(results) {
   }
 }
 
+// ENABLE/DISABLE VOTING BUTTONS
+function setVotingButtons(state) {
+  const buttons = document.querySelectorAll(".position-card button");
+  buttons.forEach((btn) => {
+    btn.disabled = !state;
+    btn.style.opacity = state ? "1" : "0.5";
+  });
+}
+
+// START VOTING (ADMIN)
+async function startVoting() {
+  await fetch(`${API_URL}/start-voting`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ duration: 259200 }), // 72 hours
+  });
+}
+
+// STOP VOTING (ADMIN)
+async function stopVoting() {
+  await fetch(`${API_URL}/stop-voting`, {
+    method: "POST",
+  });
+}
+
+// UPDATE TIMER DISPLAY
+socket.on("voting-status", (data) => {
+  votingActive = data.votingActive;
+  setVotingButtons(votingActive);
+  updateTimerDisplay(data.countdown);
+});
+
+socket.on("timer-update", (data) => {
+  updateTimerDisplay(data.countdown);
+});
+
+socket.on("voting-ended", () => {
+  votingActive = false;
+  setVotingButtons(false);
+  updateTimerDisplay(0);
+});
+
+// UPDATE TIMER DISPLAY
+function updateTimerDisplay(seconds) {
+  const display = document.getElementById("timerDisplay");
+  if (!display) return;
+
+  if (!seconds || seconds <= 0) {
+    display.innerText = "Voting Closed";
+    return;
+  }
+
+  const hrs = Math.floor(seconds / 3600);
+  const mins = Math.floor((seconds % 3600) / 60);
+  const secs = seconds % 60;
+
+  const formattedTime = `
+    ${hrs.toString().padStart(2, "0")} :    ${mins.toString().padStart(2, "0")} :    ${secs.toString().padStart(2, "0")}  `;
+
+  display.innerText = `Voting Ends In ${formattedTime}`;
+}
+
 /* ================= ADMIN ================= */
 
 if (window.location.pathname.includes("admin.html")) {
@@ -237,19 +318,39 @@ async function loadUsers() {
   });
 }
 
+// Add new user (admin)
 async function addUser() {
   const username = document.getElementById("newUsername").value.toUpperCase();
   const role = document.getElementById("role").value;
 
-  await fetch(`${API_URL}/users`, {
+  const res = await fetch(`${API_URL}/users`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ username, role }),
   });
 
+  const data = await res.json();
+
+  if (!res.ok) {
+    alert(data.message);
+    return;
+  }
+
+  // Show password in UI instead of alert
+  const passwordBox = document.getElementById("passwordBox");
+
+  if (passwordBox) {
+    passwordBox.innerHTML = `
+      <p><strong>Generated Password:</strong></p>
+      <input id="generatedPassword" value="${data.generatedPassword}" readonly />
+      <button onclick="copyPassword()">Copy</button>
+    `;
+  }
+
   loadUsers();
 }
 
+// Delete user (admin)
 async function deleteUser(id) {
   await fetch(`${API_URL}/users/${id}`, { method: "DELETE" });
   loadUsers();
@@ -262,4 +363,11 @@ async function loadVotes() {
 
   const votesList = document.getElementById("votesList");
   votesList.innerHTML = JSON.stringify(results, null, 2);
+}
+
+function copyPassword() {
+  const input = document.getElementById("generatedPassword");
+  input.select();
+  document.execCommand("copy");
+  alert("Password copied!");
 }

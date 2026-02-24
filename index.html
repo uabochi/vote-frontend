@@ -9,11 +9,13 @@
 
 <div class="card">
     <h2>Voting System Login</h2>
-    <input type="text" id="username" placeholder="Enter Service Number e.g. NN/1234">
+    <input type="text" id="username" placeholder="Username" />
+    <input type="password" id="password" placeholder="Password">
     <button onclick="login()">Login</button>
     <p id="error" class="error"></p>
 </div>
 
+<script src="https://cdn.socket.io/4.7.2/socket.io.min.js"></script>
 <script src="script.js"></script>
 </body>
 </html>
