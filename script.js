@@ -1,4 +1,4 @@
-const API_URL = "https://vote-backend-sx1r.onrender.com";
+const API_URL = "https://vote-backend-oqtz.onrender.com";
 // const API_URL = "http://localhost:5000";
 
 const socket = io(API_URL);
