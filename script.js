@@ -245,7 +245,7 @@ async function startVoting() {
   await fetch(`${API_URL}/start-voting`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ duration: 259200 }), // 72 hours
+    body: JSON.stringify({ duration: 172800 }), // 48 hours
   });
 }
 
