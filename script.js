@@ -3,11 +3,10 @@ const API_URL = "https://vote-backend-oqtz.onrender.com";
 
 const socket = io(API_URL);
 let votingActive = false;
+let countdownInterval = null;
+let votingEndTime = null;
 
-/* ===========================
-   COLOR SYSTEM FOR CHARTS
-=========================== */
-
+// COLOR SYSTEM FOR CHARTS
 const colorPalette = [
   "#1abc9c", // turquoise
   "#3498db", // blue
@@ -100,7 +99,8 @@ async function loadDashboard() {
 
   votingActive = status.votingActive;
   setVotingButtons(votingActive);
-  updateTimerDisplay(status.countdown);
+  votingEndTime = status.endTime;
+  startLocalTimer();
 
   const res = await fetch(`${API_URL}/candidates`);
   const candidates = await res.json();
@@ -206,6 +206,7 @@ async function loadResults() {
   }
 }
 
+// UPDATE CHARTS WITH NEW RESULTS
 function updateCharts(results) {
   for (let position in results) {
     const ctx = document.getElementById(`chart-${position}`);
@@ -256,22 +257,45 @@ async function stopVoting() {
   });
 }
 
-// UPDATE TIMER DISPLAY
+// SOCKET.IO LISTENERS
 socket.on("voting-status", (data) => {
   votingActive = data.votingActive;
-  setVotingButtons(votingActive);
-  updateTimerDisplay(data.countdown);
-});
+  votingEndTime = data.endTime;
 
-socket.on("timer-update", (data) => {
-  updateTimerDisplay(data.countdown);
+  setVotingButtons(votingActive);
+  startLocalTimer();
 });
 
 socket.on("voting-ended", () => {
   votingActive = false;
-  setVotingButtons(false);
+  clearInterval(countdownInterval);
   updateTimerDisplay(0);
 });
+
+// START LOCAL TIMER BASED ON END TIME
+function startLocalTimer() {
+  if (!votingEndTime) {
+    updateTimerDisplay(0);
+    return;
+  }
+
+  clearInterval(countdownInterval);
+
+  countdownInterval = setInterval(() => {
+    const now = Date.now();
+    const remaining = Math.floor((votingEndTime - now) / 1000);
+
+    if (remaining <= 0) {
+      clearInterval(countdownInterval);
+      votingActive = false;
+      setVotingButtons(false);
+      updateTimerDisplay(0);
+      return;
+    }
+
+    updateTimerDisplay(remaining);
+  }, 1000);
+}
 
 // UPDATE TIMER DISPLAY
 function updateTimerDisplay(seconds) {
@@ -287,10 +311,25 @@ function updateTimerDisplay(seconds) {
   const mins = Math.floor((seconds % 3600) / 60);
   const secs = seconds % 60;
 
-  const formattedTime = `
-    ${hrs.toString().padStart(2, "0")} :    ${mins.toString().padStart(2, "0")} :    ${secs.toString().padStart(2, "0")}  `;
+  // Format as HH : MM : SS
+  const formatted =
+    `${hrs.toString().padStart(2, "0")} : ` +
+    `${mins.toString().padStart(2, "0")} : ` +
+    `${secs.toString().padStart(2, "0")}`;
 
-  display.innerText = `Voting Ends In ${formattedTime}`;
+  display.innerText = `Voting Ends In` + `\n${formatted}`;
+}
+
+// LOAD VOTING STATUS FOR ADMIN DASHBOARD
+async function loadVotingStatusForAdmin() {
+  const res = await fetch(`${API_URL}/voting-status`);
+  const status = await res.json();
+
+  votingActive = status.votingActive;
+  votingEndTime = status.endTime;
+
+  setVotingButtons(votingActive);
+  startLocalTimer();
 }
 
 /* ================= ADMIN ================= */
@@ -298,9 +337,10 @@ function updateTimerDisplay(seconds) {
 if (window.location.pathname.includes("admin.html")) {
   loadUsers();
   loadVotes();
+  loadVotingStatusForAdmin();
 }
 
-/* USERS */
+// USERS
 async function loadUsers() {
   const res = await fetch(`${API_URL}/users`);
   const users = await res.json();
@@ -365,6 +405,7 @@ async function loadVotes() {
   votesList.innerHTML = JSON.stringify(results, null, 2);
 }
 
+// COPY GENERATED PASSWORD TO CLIPBOARD
 function copyPassword() {
   const input = document.getElementById("generatedPassword");
   input.select();
